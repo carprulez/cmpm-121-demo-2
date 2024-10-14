@@ -5,7 +5,6 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 
 document.title = APP_NAME;
 
-
 // Create and append app title
 const title = document.createElement("h1");
 title.textContent = APP_NAME;
@@ -18,11 +17,21 @@ canvas.height = 256;
 canvas.id = "drawingCanvas";
 app.appendChild(canvas);
 
+// Button creation
+const createButton = (text: string, onClick: () => void) => {
+    const button = document.createElement("button");
+    button.textContent = text;
+    button.addEventListener("click", onClick);
+    app.appendChild(button);
+    return button;
+}
+
 // Context for drawing
 const ctx = canvas.getContext("2d");
 
 let isDrawing = false;
 let points: Array<Array<{ x: number, y: number }>> = [];
+let redoStack: Array<Array<{ x: number, y: number }>> = [];
 let currentLine: Array<{ x: number, y: number }> = [];
 
 // Helper functions
@@ -32,6 +41,7 @@ const startDrawing = (event: MouseEvent) => {
     currentLine.push({ x: event.offsetX, y: event.offsetY });
     points.push(currentLine);
     changeDrawEvent();
+    redoStack = [];
 };
 
 const draw = (event: MouseEvent) => {
@@ -53,23 +63,52 @@ const changeDrawEvent = () => {
 
 // Redraw the canvas on drawing-changed
 canvas.addEventListener("drawing-changed", () => {
-    if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
+    if (!ctx) return;
 
-        points.forEach(line => {
-            ctx.beginPath();
-            line.forEach((point, index) => {
-                if (index === 0) {
-                    ctx.moveTo(point.x, point.y);
-                } else {
-                    ctx.lineTo(point.x, point.y);
-                }
-            });
-            ctx.stroke();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+
+    points.forEach(line => {
+        ctx.beginPath();
+        line.forEach((point, index) => {
+            if (index === 0) {
+                ctx.moveTo(point.x, point.y);
+            } else {
+                ctx.lineTo(point.x, point.y);
+            }
         });
+        ctx.stroke();
+    });
+});
+
+// Clear button
+createButton("Clear", () => {
+    points = [];
+    redoStack = [];
+    changeDrawEvent();
+});
+
+// Undo button
+createButton("Undo", () => {
+    if (points.length > 0) {
+        const lastLine = points.pop();
+        if (lastLine) {
+            redoStack.push(lastLine);
+        }
+        changeDrawEvent();
+    }
+});
+
+// Redo button
+createButton("Redo", () => {
+    if(redoStack.length > 0) {
+        const lastUndoneLine = redoStack.pop();
+        if (lastUndoneLine) {
+            points.push(lastUndoneLine);
+        }
+        changeDrawEvent();
     }
 });
 
@@ -78,12 +117,3 @@ canvas.addEventListener("mousedown", startDrawing);
 canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("mouseup", stopDrawing);
 canvas.addEventListener("mouseleave", stopDrawing);
-
-// Create and append "Clear" button
-const clearButton = document.createElement("button");
-clearButton.textContent = "Clear";
-clearButton.addEventListener("click", () => {
-    points = [];
-    changeDrawEvent();
-});
-app.appendChild(clearButton);
