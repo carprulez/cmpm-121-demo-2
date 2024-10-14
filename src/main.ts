@@ -17,6 +17,36 @@ canvas.height = 256;
 canvas.id = "drawingCanvas";
 app.appendChild(canvas);
 
+class MarkerLine {
+    private points: Array<{ x: number, y: number }>;
+
+    constructor(initialX: number, initialY: number) {
+        this.points = [{ x: initialX, y: initialY}];
+    }
+
+    drag(x: number, y: number) {
+        this.points.push({ x, y });
+    }
+
+    display(ctx: CanvasRenderingContext2D) {
+        if (this.points.length < 2) return;
+
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+
+        ctx.beginPath();
+        this.points.forEach((point, index) => {
+            if (index === 0) {
+                ctx.moveTo(point.x, point.y);
+            } else {
+                ctx.lineTo(point.x, point.y);
+            }
+        });
+        ctx.stroke();
+    }
+}
+
 // Button creation
 const createButton = (text: string, onClick: () => void) => {
     const button = document.createElement("button");
@@ -30,30 +60,29 @@ const createButton = (text: string, onClick: () => void) => {
 const ctx = canvas.getContext("2d");
 
 let isDrawing = false;
-let points: Array<Array<{ x: number, y: number }>> = [];
-let redoStack: Array<Array<{ x: number, y: number }>> = [];
-let currentLine: Array<{ x: number, y: number }> = [];
+let points: Array<MarkerLine> = [];
+let redoStack: Array<MarkerLine> = [];
+let currentLine: MarkerLine | null = null;
 
 // Helper functions
 const startDrawing = (event: MouseEvent) => {
     isDrawing = true;
-    currentLine = []; // Start a new line
-    currentLine.push({ x: event.offsetX, y: event.offsetY });
+    currentLine = new MarkerLine(event.offsetX, event.offsetY);
     points.push(currentLine);
     changeDrawEvent();
     redoStack = [];
 };
 
 const draw = (event: MouseEvent) => {
-    if (!isDrawing) return;
-
-    currentLine.push({ x: event.offsetX, y: event.offsetY });
-    changeDrawEvent();
+    if (isDrawing && currentLine) {
+        currentLine.drag(event.offsetX, event.offsetY);
+        changeDrawEvent();
+    }
 };
 
 const stopDrawing = () => {
     isDrawing = false;
-    currentLine = [];
+    currentLine = null;
 };
 
 const changeDrawEvent = () => {
@@ -66,21 +95,7 @@ canvas.addEventListener("drawing-changed", () => {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-
-    points.forEach(line => {
-        ctx.beginPath();
-        line.forEach((point, index) => {
-            if (index === 0) {
-                ctx.moveTo(point.x, point.y);
-            } else {
-                ctx.lineTo(point.x, point.y);
-            }
-        });
-        ctx.stroke();
-    });
+    points.forEach(line => line.display(ctx));
 });
 
 // Clear button
