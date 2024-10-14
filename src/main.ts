@@ -4,7 +4,7 @@ const APP_NAME = "Stellar Stamps";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 document.title = APP_NAME;
-app.innerHTML = APP_NAME;
+
 
 // Create and append app title
 const title = document.createElement("h1");
