@@ -84,6 +84,37 @@ class ToolPreview {
     }
 }
 
+class Sticker {
+    private x: number;
+    private y: number;
+    private emoji: string;
+
+    constructor(emoji: string, initialX: number, initialY: number) {
+        this.x = initialX;
+        this.y = initialY;
+        this.emoji = emoji;
+    }
+
+    drag(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+
+    display(ctx: CanvasRenderingContext2D) {
+        ctx.font = "24px serif";
+        ctx.fillText(this.emoji, this.x, this.y);
+    }
+}
+
+class StickerPreview extends Sticker {
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.font = "24px serif";
+        ctx.globalAlpha = 0.5;
+        ctx.fillText(this.emoji, this.x, this.y);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
 // Button creation
 const createButton = (text: string, onClick: () => void, className?: string) => {
     const button = document.createElement("button");
@@ -98,39 +129,56 @@ const createButton = (text: string, onClick: () => void, className?: string) => 
 const ctx = canvas.getContext("2d");
 
 let isDrawing = false;
-let points: Array<MarkerLine> = [];
-let redoStack: Array<MarkerLine> = [];
+let points: Array<MarkerLine | Sticker> = [];
+let redoStack: Array<MarkerLine | Sticker> = [];
 let currentLine: MarkerLine | null = null;
+let currentSticker: Sticker | null = null;
+let toolPreview: ToolPreview | StickerPreview | null = null;
 let currentThickness = 2;
-let toolPreview: ToolPreview | null = null;
+let currentEmoji = "";
 
 // Initialize tool preview
 toolPreview = new ToolPreview(currentThickness);
 
 // Helper functions
 const startDrawing = (event: MouseEvent) => {
-    isDrawing = true;
-    currentLine = new MarkerLine(event.offsetX, event.offsetY, currentThickness);
-    points.push(currentLine);
-    changeDrawEvent();
-    redoStack = [];
+    if (currentEmoji) {
+        currentSticker = new Sticker(currentEmoji, event.offsetX, event.offsetY);
+        points.push(currentSticker);
+        changeDrawEvent();
+    } else {
+        isDrawing = true;
+        currentLine = new MarkerLine(event.offsetX, event.offsetY, currentThickness);
+        points.push(currentLine);
+        changeDrawEvent();
+        redoStack = [];
+    }
 };
 
 const draw = (event: MouseEvent) => {
-    if (isDrawing && currentLine) {
+    if (currentEmoji && currentSticker) {
+        currentSticker.drag(event.offsetX, event.offsetY);
+        changeDrawEvent();
+    } else if (isDrawing && currentLine) {
         currentLine.drag(event.offsetX, event.offsetY);
         changeDrawEvent();
     }
 };
 
 const stopDrawing = () => {
+    currentSticker = null;
     isDrawing = false;
     currentLine = null;
 };
 
 const updateToolPreview = (event: MouseEvent) => {
-    if (!isDrawing && toolPreview) {
-        toolPreview.updatePosition(event.offsetX, event.offsetY);
+    if (!isDrawing && !currentSticker) {
+        if (currentEmoji) {
+            toolPreview = new StickerPreview(currentEmoji, event.offsetX, event.offsetY);
+        } else {
+            toolPreview = new ToolPreview(currentThickness);
+            toolPreview.updatePosition(event.offsetX, event.offsetY);
+        }
         changeDrawEvent();
     }
 };
@@ -147,7 +195,7 @@ canvas.addEventListener("drawing-changed", () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     points.forEach(line => line.display(ctx));
 
-    if (toolPreview && !isDrawing) {
+    if (toolPreview && !isDrawing && !currentSticker) {
         toolPreview.draw(ctx);
     }
 });
@@ -195,6 +243,28 @@ const thickButton = createButton("Thick", () => {
     thinButton.classList.remove("selectedTool");
     if (toolPreview) toolPreview = new ToolPreview(currentThickness);
 });
+
+// Sticker selection buttons
+const smileButton = createButton("😊", () => {
+    currentEmoji = "😊";
+    thinButton.classList.remove("selectedTool");
+    thickButton.classList.remove("selectedTool");
+    changeDrawEvent();
+});
+
+const heartButton = createButton("💛", () => {
+    currentEmoji = "💛";
+    thinButton.classList.remove("selectedTool");
+    thickButton.classList.remove("selectedTool");
+    changeDrawEvent();
+});
+
+const starButton = createButton("⭐", () => {
+    currentEmoji = "⭐";
+    thinButton.classList.remove("selectedTool");
+    thickButton.classList.remove("selectedTool");
+    changeDrawEvent();
+})
 
 // Register mouse event listeners
 canvas.addEventListener("mousedown", startDrawing);
