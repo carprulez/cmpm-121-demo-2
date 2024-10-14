@@ -49,6 +49,31 @@ class MarkerLine {
     }
 }
 
+class ToolPreview {
+    private x: number;
+    private y: number;
+    private thickness: number;
+
+    constructor(thickness: number) {
+        this.x = 0;
+        this.y = 0;
+        this.thickness = thickness;
+    }
+
+    updatePosition(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.thickness / 2, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+}
+
 // Button creation
 const createButton = (text: string, onClick: () => void, className?: string) => {
     const button = document.createElement("button");
@@ -67,6 +92,10 @@ let points: Array<MarkerLine> = [];
 let redoStack: Array<MarkerLine> = [];
 let currentLine: MarkerLine | null = null;
 let currentThickness = 2;
+let toolPreview: ToolPreview | null = null;
+
+// Initialize tool preview
+toolPreview = new ToolPreview(currentThickness);
 
 // Helper functions
 const startDrawing = (event: MouseEvent) => {
@@ -89,6 +118,13 @@ const stopDrawing = () => {
     currentLine = null;
 };
 
+const updateToolPreview = (event: MouseEvent) => {
+    if (!isDrawing && toolPreview) {
+        toolPreview.updatePosition(event.offsetX, event.offsetY);
+        changeDrawEvent();
+    }
+};
+
 const changeDrawEvent = () => {
     const customEvent = new CustomEvent("drawing-changed");
     canvas.dispatchEvent(customEvent);
@@ -100,6 +136,10 @@ canvas.addEventListener("drawing-changed", () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     points.forEach(line => line.display(ctx));
+
+    if (toolPreview && !isDrawing) {
+        toolPreview.draw(ctx);
+    }
 });
 
 // Clear button
@@ -136,16 +176,19 @@ const thinButton = createButton("Thin", () => {
     currentThickness = 2;
     thinButton.classList.add("selectedTool");
     thickButton.classList.remove("selectedTool");
+    if (toolPreview) toolPreview = new ToolPreview(currentThickness);
 }, "selectedTool"); // Default thickness
 
 const thickButton = createButton("Thick", () => {
     currentThickness = 5;
     thickButton.classList.add("selectedTool");
     thinButton.classList.remove("selectedTool");
+    if (toolPreview) toolPreview = new ToolPreview(currentThickness);
 });
 
 // Register mouse event listeners
 canvas.addEventListener("mousedown", startDrawing);
 canvas.addEventListener("mousemove", draw);
+canvas.addEventListener("mousemove", updateToolPreview);
 canvas.addEventListener("mouseup", stopDrawing);
 canvas.addEventListener("mouseleave", stopDrawing);
