@@ -19,9 +19,11 @@ app.appendChild(canvas);
 
 class MarkerLine {
     private points: Array<{ x: number, y: number }>;
+    private thickness: number;
 
-    constructor(initialX: number, initialY: number) {
-        this.points = [{ x: initialX, y: initialY}];
+    constructor(initialX: number, initialY: number, thickness: number) {
+        this.points = [{ x: initialX, y: initialY }];
+        this.thickness = thickness;
     }
 
     drag(x: number, y: number) {
@@ -32,7 +34,7 @@ class MarkerLine {
         if (this.points.length < 2) return;
 
         ctx.strokeStyle = "black";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = this.thickness;
         ctx.lineCap = "round";
 
         ctx.beginPath();
@@ -48,9 +50,10 @@ class MarkerLine {
 }
 
 // Button creation
-const createButton = (text: string, onClick: () => void) => {
+const createButton = (text: string, onClick: () => void, className?: string) => {
     const button = document.createElement("button");
     button.textContent = text;
+    button.className = className || "";
     button.addEventListener("click", onClick);
     app.appendChild(button);
     return button;
@@ -63,11 +66,12 @@ let isDrawing = false;
 let points: Array<MarkerLine> = [];
 let redoStack: Array<MarkerLine> = [];
 let currentLine: MarkerLine | null = null;
+let currentThickness = 2;
 
 // Helper functions
 const startDrawing = (event: MouseEvent) => {
     isDrawing = true;
-    currentLine = new MarkerLine(event.offsetX, event.offsetY);
+    currentLine = new MarkerLine(event.offsetX, event.offsetY, currentThickness);
     points.push(currentLine);
     changeDrawEvent();
     redoStack = [];
@@ -125,6 +129,19 @@ createButton("Redo", () => {
         }
         changeDrawEvent();
     }
+});
+
+// Marker thickness buttons
+const thinButton = createButton("Thin", () => {
+    currentThickness = 2;
+    thinButton.classList.add("selectedTool");
+    thickButton.classList.remove("selectedTool");
+}, "selectedTool"); // Default thickness
+
+const thickButton = createButton("Thick", () => {
+    currentThickness = 5;
+    thickButton.classList.add("selectedTool");
+    thinButton.classList.remove("selectedTool");
 });
 
 // Register mouse event listeners

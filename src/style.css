@@ -101,3 +101,8 @@ button:focus-visible {
   box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
   background-color: white;
 }
+
+.selectedTool {
+  background-color: #646cff;
+  color: white;
+}
