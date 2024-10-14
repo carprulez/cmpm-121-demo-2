@@ -10,12 +10,22 @@ const title = document.createElement("h1");
 title.textContent = APP_NAME;
 app.appendChild(title);
 
+// Create main container
+const mainContainer = document.createElement("div");
+mainContainer.className = "main-container";
+app.appendChild(mainContainer);
+
+// Create a container for the buttons
+const buttonContainer = document.createElement("div");
+buttonContainer.className = "button-container";
+mainContainer.appendChild(buttonContainer);
+
 // Create and append canvas element
 const canvas = document.createElement("canvas");
 canvas.width = 256;
 canvas.height = 256;
 canvas.id = "drawingCanvas";
-app.appendChild(canvas);
+mainContainer.appendChild(canvas);
 
 class MarkerLine {
     private points: Array<{ x: number, y: number }>;
@@ -80,7 +90,7 @@ const createButton = (text: string, onClick: () => void, className?: string) => 
     button.textContent = text;
     button.className = className || "";
     button.addEventListener("click", onClick);
-    app.appendChild(button);
+    buttonContainer.appendChild(button);
     return button;
 }
 
