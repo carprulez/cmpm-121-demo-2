@@ -215,6 +215,15 @@ canvas.addEventListener("tool-moved", () => {
     }
 });
 
+const fireToolMovedEvent = () => {
+    toolPreview = currentEmoji ? 
+        new StickerPreview(currentEmoji, 0, 0) :
+        new ToolPreview(currentThickness); // Default to line preview if no emoji
+
+    const toolMoved = new CustomEvent("tool-moved");
+    canvas.dispatchEvent(toolMoved);
+};
+
 // Clear button
 createButton("Clear", () => {
     points = [];
@@ -247,39 +256,47 @@ createButton("Redo", () => {
 // Marker thickness buttons
 const thinButton = createButton("Thin", () => {
     currentThickness = 2;
+    currentEmoji = ""; // Clear current emoji
     thinButton.classList.add("selectedTool");
     thickButton.classList.remove("selectedTool");
-    if (toolPreview) toolPreview = new ToolPreview(currentThickness);
-}, "selectedTool"); // Default thickness
+    fireToolMovedEvent(); // Update tool preview
+});
 
 const thickButton = createButton("Thick", () => {
     currentThickness = 5;
+    currentEmoji = ""; // Clear current emoji
     thickButton.classList.add("selectedTool");
     thinButton.classList.remove("selectedTool");
-    if (toolPreview) toolPreview = new ToolPreview(currentThickness);
+    fireToolMovedEvent(); // Update tool preview
 });
-
 // Sticker selection buttons
-const smileButton = createButton("😊", () => {
-    currentEmoji = "😊";
-    thinButton.classList.remove("selectedTool");
-    thickButton.classList.remove("selectedTool");
-    changeDrawEvent();
+// Sticker selection buttons
+const emojis = ["😊", "💛", "⭐"]; // Example list of emoji
+emojis.forEach(emoji => {
+    createButton(emoji, () => {
+        currentEmoji = emoji;
+        thinButton.classList.remove("selectedTool");
+        thickButton.classList.remove("selectedTool");
+        fireToolMovedEvent(); // Fire the tool-moved event
+    });
 });
 
-const heartButton = createButton("💛", () => {
-    currentEmoji = "💛";
-    thinButton.classList.remove("selectedTool");
-    thickButton.classList.remove("selectedTool");
-    changeDrawEvent();
-});
+// Implement command pattern to place a sticker
+const placeSticker = (x: number, y: number) => {
+    if (currentEmoji) {
+        currentSticker = new Sticker(currentEmoji, x, y);
+        points.push(currentSticker);
+        changeDrawEvent();
+        currentSticker = null; // Reset after placing
+    }
+};
 
-const starButton = createButton("⭐", () => {
-    currentEmoji = "⭐";
-    thinButton.classList.remove("selectedTool");
-    thickButton.classList.remove("selectedTool");
-    changeDrawEvent();
-})
+// Start placing sticker on mouse down
+canvas.addEventListener("mousedown", (event: MouseEvent) => {
+    if (currentEmoji) {
+        placeSticker(event.offsetX, event.offsetY);
+    }
+});
 
 // Register mouse event listeners
 canvas.addEventListener("mousedown", startDrawing);
