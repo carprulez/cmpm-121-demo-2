@@ -172,11 +172,10 @@ const stopDrawing = () => {
 };
 
 const updateToolPreview = (event: MouseEvent) => {
-    if (!isDrawing && !currentSticker) {
+    if (!isDrawing && !currentSticker) { // Ensure preview is visible only when not drawing
         if (currentEmoji) {
             toolPreview = new StickerPreview(currentEmoji, event.offsetX, event.offsetY);
         } else {
-            toolPreview = new ToolPreview(currentThickness);
             toolPreview.updatePosition(event.offsetX, event.offsetY);
         }
         changeDrawEvent();
@@ -197,6 +196,22 @@ canvas.addEventListener("drawing-changed", () => {
 
     if (toolPreview && !isDrawing && !currentSticker) {
         toolPreview.draw(ctx);
+    }
+});
+
+canvas.addEventListener("mousemove", (event: MouseEvent) => {
+    updateToolPreview(event);
+    changeDrawEvent(); // Trigger a redraw whenever the tool moves
+});
+
+const toolMoved = new CustomEvent("tool-moved");
+
+// Register the tool-moved event listener
+canvas.addEventListener("tool-moved", () => {
+    if (!isDrawing && !currentSticker) {
+        if (toolPreview) {
+            toolPreview.draw(ctx);
+        }
     }
 });
 
