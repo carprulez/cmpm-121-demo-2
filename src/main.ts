@@ -277,7 +277,7 @@ createButton("Redo", () => {
 
 // Marker thickness buttons
 const thinButton = createButton("Thin", () => {
-    currentThickness = 1.5;
+    currentThickness = 1;
     currentEmoji = ""; // Clear current emoji
     thinButton.classList.add("selectedTool");
     thickButton.classList.remove("selectedTool");
