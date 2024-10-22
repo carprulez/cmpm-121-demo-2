@@ -277,7 +277,7 @@ createButton("Redo", () => {
 
 // Marker thickness buttons
 const thinButton = createButton("Thin", () => {
-    currentThickness = 2;
+    currentThickness = 1.5;
     currentEmoji = ""; // Clear current emoji
     thinButton.classList.add("selectedTool");
     thickButton.classList.remove("selectedTool");
@@ -285,15 +285,12 @@ const thinButton = createButton("Thin", () => {
 });
 
 const thickButton = createButton("Thick", () => {
-    currentThickness = 5;
+    currentThickness = 6;
     currentEmoji = ""; // Clear current emoji
     thickButton.classList.add("selectedTool");
     thinButton.classList.remove("selectedTool");
     fireToolMovedEvent(); // Update tool preview
 });
-
-// Export button
-createButton("Export", exportCanvas);
 
 // Sticker selection buttons
 let stickers = [
@@ -351,4 +348,5 @@ canvas.addEventListener("mousemove", updateToolPreview);
 canvas.addEventListener("mouseup", stopDrawing);
 canvas.addEventListener("mouseleave", stopDrawing);
 
+// Export button
 createButton("Export", exportCanvas);
