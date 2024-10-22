@@ -30,10 +30,12 @@ mainContainer.appendChild(canvas);
 class MarkerLine {
     private points: Array<{ x: number, y: number }>;
     private thickness: number;
+    private color: string;
 
-    constructor(initialX: number, initialY: number, thickness: number) {
+    constructor(initialX: number, initialY: number, thickness: number, color: string) {
         this.points = [{ x: initialX, y: initialY }];
         this.thickness = thickness;
+        this.color = color;
     }
 
     drag(x: number, y: number) {
@@ -43,7 +45,7 @@ class MarkerLine {
     display(ctx: CanvasRenderingContext2D) {
         if (this.points.length < 2) return;
 
-        ctx.strokeStyle = "black";
+        ctx.strokeStyle = this.color;
         ctx.lineWidth = this.thickness;
         ctx.lineCap = "round";
 
@@ -76,7 +78,7 @@ class ToolPreview {
     }
 
     draw(ctx: CanvasRenderingContext2D) {
-        ctx.strokeStyle = "black";
+        ctx.strokeStyle = currentColor; 
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.thickness / 2, 0, Math.PI * 2);
@@ -88,11 +90,13 @@ class Sticker {
     private x: number;
     private y: number;
     private emoji: string;
+    private rotation: number;
 
-    constructor(emoji: string, initialX: number, initialY: number) {
+    constructor(emoji: string, initialX: number, initialY: number, rotation: number) {
         this.x = initialX;
         this.y = initialY;
         this.emoji = emoji;
+        this.rotation = rotation;
     }
 
     drag(x: number, y: number) {
@@ -101,21 +105,38 @@ class Sticker {
     }
 
     display(ctx: CanvasRenderingContext2D) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((Math.PI / 180) * this.rotation);
+        ctx.translate(-this.x, -this.y);
         ctx.font = "24px serif";
         ctx.fillText(this.emoji, this.x, this.y);
+        ctx.restore();
     }
 }
 
 class StickerPreview extends Sticker {
     draw(ctx: CanvasRenderingContext2D) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((Math.PI / 180) * this.rotation);
+        ctx.translate(-this.x, -this.y);
         ctx.font = "24px serif";
         ctx.globalAlpha = 0.5;
         ctx.fillText(this.emoji, this.x, this.y);
         ctx.globalAlpha = 1.0;
+        ctx.restore();
     }
 }
 
-// Button creation
+const getRandomColor = () => {
+    return "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+};
+
+const getRandomRotation = () => {
+    return Math.floor(Math.random() * 360);
+}
+
 const createButton = (text: string, onClick: () => void, className?: string) => {
     const button = document.createElement("button");
     button.textContent = text;
@@ -125,7 +146,6 @@ const createButton = (text: string, onClick: () => void, className?: string) => 
     return button;
 }
 
-// Context for drawing
 const ctx = canvas.getContext("2d");
 
 let isDrawing = false;
@@ -134,21 +154,68 @@ let redoStack: Array<MarkerLine | Sticker> = [];
 let currentLine: MarkerLine | null = null;
 let currentSticker: Sticker | null = null;
 let toolPreview: ToolPreview | StickerPreview | null = null;
-let currentThickness = 2;
+let currentThickness = 2; // Default marker thickness
 let currentEmoji = "";
+let currentRotateAngle = 0;
+let currentColor = "#000000";
+
+// Color choices
+const colors = [
+    { code: "#000000", label: "Black" },
+    { code: "#FF0000", label: "Red" },
+    { code: "#00FF00", label: "Green" },
+    { code: "#0000FF", label: "Blue" }
+];
+
+// Function for creating color buttons
+colors.forEach(color => {
+    const colorButton = createButton(color.label, () => {
+        currentColor = color.code; // Update the current drawing color
+        currentThickness = 2; // Reset to default marker thickness
+        currentEmoji = "";     // Ensure no sticker is selected
+        fireToolMovedEvent();  // Update preview to reflect changes
+    });
+    colorButton.style.backgroundColor = color.code;
+    colorButton.style.color = "#FFFFFF";
+    buttonContainer.appendChild(colorButton);
+});
+
+createButton("Random Color", () => {
+    currentColor = getRandomColor();
+    currentThickness = 2; // Reset to default marker thickness
+    currentEmoji = "";     // Ensure no sticker is selected
+    fireToolMovedEvent();
+});
+
+// Function to create marker buttons
+const createMarkerButton = (text: string, thickness: number, className?: string) => {
+    createButton(text, () => {
+        currentThickness = thickness;
+        currentEmoji = "";
+        fireToolMovedEvent();
+    }, className);
+};
+
+// Function to create sticker buttons
+const createStickerButton = (emoji: string) => {
+    createButton(emoji, () => {
+        currentEmoji = emoji;
+        currentRotateAngle = getRandomRotation(); 
+        fireToolMovedEvent();
+    }, "sticker-button");
+};
 
 // Initialize tool preview
 toolPreview = new ToolPreview(currentThickness);
 
-// Helper functions
 const startDrawing = (event: MouseEvent) => {
     if (currentEmoji) {
-        currentSticker = new Sticker(currentEmoji, event.offsetX, event.offsetY);
+        currentSticker = new Sticker(currentEmoji, event.offsetX, event.offsetY, currentRotateAngle);
         points.push(currentSticker);
         changeDrawEvent();
     } else {
         isDrawing = true;
-        currentLine = new MarkerLine(event.offsetX, event.offsetY, currentThickness);
+        currentLine = new MarkerLine(event.offsetX, event.offsetY, currentThickness, currentColor);
         points.push(currentLine);
         changeDrawEvent();
         redoStack = [];
@@ -172,7 +239,6 @@ const stopDrawing = () => {
 };
 
 const exportCanvas = () => {
-    // Step 2: Create and configure a large canvas
     const exportCanvas = document.createElement("canvas");
     exportCanvas.width = 1024;
     exportCanvas.height = 1024;
@@ -180,25 +246,23 @@ const exportCanvas = () => {
 
     if (!exportCtx) return;
 
-    // Step 3: Scale the context appropriately
-    exportCtx.scale(4, 4); // Since the new canvas is 4x larger than the original
+    exportCtx.scale(4, 4);
 
-    // Step 4: Draw all existing drawings onto the new canvas
     points.forEach(point => point.display(exportCtx));
 
-    // Step 5: Convert the large canvas content to a PNG data URL and trigger download
     const anchor = document.createElement("a");
     anchor.href = exportCanvas.toDataURL("image/png");
-    anchor.download = "stellar_stamps.png"; // Name your download file
-    anchor.click(); // Trigger the download
+    anchor.download = "stellar_stamps.png";
+    anchor.click();
 };
 
 const updateToolPreview = (event: MouseEvent) => {
-    if (!isDrawing && !currentSticker) { // Ensure preview is visible only when not drawing
+    if (!isDrawing && !currentSticker) {
         if (currentEmoji) {
-            toolPreview = new StickerPreview(currentEmoji, event.offsetX, event.offsetY);
+            toolPreview = new StickerPreview(currentEmoji, event.offsetX, event.offsetY, currentRotateAngle);
         } else {
             toolPreview.updatePosition(event.offsetX, event.offsetY);
+            ctx.strokeStyle = currentColor;
         }
         changeDrawEvent();
     }
@@ -223,12 +287,12 @@ canvas.addEventListener("drawing-changed", () => {
 
 canvas.addEventListener("mousemove", (event: MouseEvent) => {
     updateToolPreview(event);
-    changeDrawEvent(); // Trigger a redraw whenever the tool moves
+    changeDrawEvent();
 });
 
+// Tool interactions
 const toolMoved = new CustomEvent("tool-moved");
 
-// Register the tool-moved event listener
 canvas.addEventListener("tool-moved", () => {
     if (!isDrawing && !currentSticker) {
         if (toolPreview) {
@@ -239,21 +303,20 @@ canvas.addEventListener("tool-moved", () => {
 
 const fireToolMovedEvent = () => {
     toolPreview = currentEmoji ? 
-        new StickerPreview(currentEmoji, 0, 0) :
-        new ToolPreview(currentThickness); // Default to line preview if no emoji
+        new StickerPreview(currentEmoji, 0, 0, currentRotateAngle) :
+        new ToolPreview(currentThickness);
 
     const toolMoved = new CustomEvent("tool-moved");
     canvas.dispatchEvent(toolMoved);
 };
 
-// Clear button
+// Button controls
 createButton("Clear", () => {
     points = [];
     redoStack = [];
     changeDrawEvent();
 });
 
-// Undo button
 createButton("Undo", () => {
     if (points.length > 0) {
         const lastLine = points.pop();
@@ -264,9 +327,8 @@ createButton("Undo", () => {
     }
 });
 
-// Redo button
 createButton("Redo", () => {
-    if(redoStack.length > 0) {
+    if (redoStack.length > 0) {
         const lastUndoneLine = redoStack.pop();
         if (lastUndoneLine) {
             points.push(lastUndoneLine);
@@ -276,65 +338,27 @@ createButton("Redo", () => {
 });
 
 // Marker thickness buttons
-const thinButton = createButton("Thin", () => {
-    currentThickness = 1;
-    currentEmoji = ""; // Clear current emoji
-    thinButton.classList.add("selectedTool");
-    thickButton.classList.remove("selectedTool");
-    fireToolMovedEvent(); // Update tool preview
-});
+createMarkerButton("Thin Marker", 1, "marker-button");
+createMarkerButton("Thick Marker", 6, "marker-button");
 
-const thickButton = createButton("Thick", () => {
-    currentThickness = 6;
-    currentEmoji = ""; // Clear current emoji
-    thickButton.classList.add("selectedTool");
-    thinButton.classList.remove("selectedTool");
-    fireToolMovedEvent(); // Update tool preview
-});
-
-// Sticker selection buttons
+// Sticker selection and creation
 let stickers = [
     { emoji: "😊" },
     { emoji: "💛" },
     { emoji: "⭐" }
 ];
 
-const createStickerButtons = () => {
-    // Clear existing buttons to reset UI
-    document.querySelectorAll(".sticker-button").forEach(button => button.remove());
-
-    stickers.forEach(sticker => {
-        createButton(sticker.emoji, () => {
-            currentEmoji = sticker.emoji;
-            thinButton.classList.remove("selectedTool");
-            thickButton.classList.remove("selectedTool");
-            fireToolMovedEvent();
-        }, "sticker-button");
-    });
-};
-
-// Call this function during setup to initialize the buttons
-createStickerButtons();
+stickers.forEach(sticker => createStickerButton(sticker.emoji));
 
 createButton("Add Custom Sticker", () => {
     const userDefinedEmoji = prompt("Enter your custom sticker emoji:", "🚀");
     if (userDefinedEmoji) {
         stickers.push({ emoji: userDefinedEmoji });
-        createStickerButtons(); // Refresh buttons to include new sticker
+        createStickerButton(userDefinedEmoji);
     }
 });
 
-// Implement command pattern to place a sticker
-const placeSticker = (x: number, y: number) => {
-    if (currentEmoji) {
-        currentSticker = new Sticker(currentEmoji, x, y);
-        points.push(currentSticker);
-        changeDrawEvent();
-        currentSticker = null; // Reset after placing
-    }
-};
-
-// Start placing sticker on mouse down
+// Place sticker
 canvas.addEventListener("mousedown", (event: MouseEvent) => {
     if (currentEmoji) {
         placeSticker(event.offsetX, event.offsetY);
