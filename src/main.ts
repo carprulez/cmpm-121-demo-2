@@ -270,15 +270,35 @@ const thickButton = createButton("Thick", () => {
     fireToolMovedEvent(); // Update tool preview
 });
 // Sticker selection buttons
-// Sticker selection buttons
-const emojis = ["😊", "💛", "⭐"]; // Example list of emoji
-emojis.forEach(emoji => {
-    createButton(emoji, () => {
-        currentEmoji = emoji;
-        thinButton.classList.remove("selectedTool");
-        thickButton.classList.remove("selectedTool");
-        fireToolMovedEvent(); // Fire the tool-moved event
+let stickers = [
+    { emoji: "😊" },
+    { emoji: "💛" },
+    { emoji: "⭐" }
+];
+
+const createStickerButtons = () => {
+    // Clear existing buttons to reset UI
+    document.querySelectorAll(".sticker-button").forEach(button => button.remove());
+
+    stickers.forEach(sticker => {
+        createButton(sticker.emoji, () => {
+            currentEmoji = sticker.emoji;
+            thinButton.classList.remove("selectedTool");
+            thickButton.classList.remove("selectedTool");
+            fireToolMovedEvent();
+        }, "sticker-button");
     });
+};
+
+// Call this function during setup to initialize the buttons
+createStickerButtons();
+
+createButton("Add Custom Sticker", () => {
+    const userDefinedEmoji = prompt("Enter your custom sticker emoji:", "🚀");
+    if (userDefinedEmoji) {
+        stickers.push({ emoji: userDefinedEmoji });
+        createStickerButtons(); // Refresh buttons to include new sticker
+    }
 });
 
 // Implement command pattern to place a sticker
