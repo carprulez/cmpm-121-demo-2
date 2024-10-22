@@ -171,6 +171,28 @@ const stopDrawing = () => {
     currentLine = null;
 };
 
+const exportCanvas = () => {
+    // Step 2: Create and configure a large canvas
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = 1024;
+    exportCanvas.height = 1024;
+    const exportCtx = exportCanvas.getContext("2d");
+
+    if (!exportCtx) return;
+
+    // Step 3: Scale the context appropriately
+    exportCtx.scale(4, 4); // Since the new canvas is 4x larger than the original
+
+    // Step 4: Draw all existing drawings onto the new canvas
+    points.forEach(point => point.display(exportCtx));
+
+    // Step 5: Convert the large canvas content to a PNG data URL and trigger download
+    const anchor = document.createElement("a");
+    anchor.href = exportCanvas.toDataURL("image/png");
+    anchor.download = "stellar_stamps.png"; // Name your download file
+    anchor.click(); // Trigger the download
+};
+
 const updateToolPreview = (event: MouseEvent) => {
     if (!isDrawing && !currentSticker) { // Ensure preview is visible only when not drawing
         if (currentEmoji) {
@@ -269,6 +291,10 @@ const thickButton = createButton("Thick", () => {
     thinButton.classList.remove("selectedTool");
     fireToolMovedEvent(); // Update tool preview
 });
+
+// Export button
+createButton("Export", exportCanvas);
+
 // Sticker selection buttons
 let stickers = [
     { emoji: "😊" },
@@ -324,3 +350,5 @@ canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("mousemove", updateToolPreview);
 canvas.addEventListener("mouseup", stopDrawing);
 canvas.addEventListener("mouseleave", stopDrawing);
+
+createButton("Export", exportCanvas);
